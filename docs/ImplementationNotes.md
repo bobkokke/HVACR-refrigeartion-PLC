@@ -33,7 +33,7 @@ cycle instance data block (e.g., `DB_RefrigCycle`).
 
 - Replace placeholder thermodynamic relationships with verified property tables
   or Bitzer maps when available.
-- Extend the refrigerant enumeration with property-specific coefficients.
+- Extend the refrigerant selector constants with property-specific coefficients.
 - Implement persistence/loading of CSV polynomial maps in
   `FB_BitzerMapLoader` using TIA Portal Openness APIs or a custom parser.
 - Validate the h-log(p) trend scaling against real equipment to fine-tune

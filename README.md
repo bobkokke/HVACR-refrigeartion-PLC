@@ -22,6 +22,8 @@ metrics suitable for visualisation on an h-log(p) diagram.
 2. Map the WinCC tags provided in `RefrigerationHMI.xml` to the PLC instance to
    animate the HMI.
 3. Adjust `Refrigerant` and temperature inputs as required for your simulation.
+   The block exposes integer constants `REFRIG_R134A`, `REFRIG_R404A`, and
+   `REFRIG_CO2` for the refrigerant selector.
 4. Replace the placeholder calculations with Bitzer polynomial maps by
    implementing the logic inside `FB_BitzerMapLoader` and wiring its outputs into
    `FB_RefrigerationCycle`.
