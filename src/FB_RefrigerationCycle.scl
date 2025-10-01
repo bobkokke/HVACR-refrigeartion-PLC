@@ -1,11 +1,3 @@
-(*
-    FB_RefrigerationCycle
-    Siemens S7-1500 Structured Control Language implementation of a simplified
-    vapour-compression refrigeration cycle. The model is parametric and can be
-    replaced with manufacturer Bitzer polynomial maps when available.
-    TODO: Integrate actual Bitzer maps via FB_BitzerMapLoader once coefficients are provided.
-*)
-
 TYPE E_Refrigerant : (
     Refrig_R134a,
     Refrig_R404A,
