@@ -38,7 +38,7 @@ VAR
     mapCapacity : REAL;
 END_VAR
 
-CONST
+VAR CONSTANT
     REFRIG_R134A : INT := 0;
     REFRIG_R404A : INT := 1;
     REFRIG_CO2 : INT := 2;
@@ -56,7 +56,7 @@ CONST
     BASE_MASSFLOW_KGPS : REAL := 0.05; // nominal mass flow at 50 Hz
     BASE_COND_TEMP_K : REAL := 308.15; // approx 35°C
     BASE_EVAP_TEMP_K : REAL := 273.15; // 0°C
-END_CONST;
+END_VAR
 
 BEGIN
     statusWord := 0;
