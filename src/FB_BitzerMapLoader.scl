@@ -1,0 +1,54 @@
+(*
+    FB_BitzerMapLoader
+    Placeholder function block to load Bitzer compressor polynomial map data.
+    Replace the stub logic with actual CSV parsing logic when integration data
+    becomes available.
+*)
+
+FUNCTION_BLOCK FB_BitzerMapLoader
+VAR_INPUT
+    Execute : BOOL;
+    FilePath : STRING[254];
+END_VAR
+VAR_OUTPUT
+    Ready : BOOL;
+    Error : BOOL;
+    StatusID : WORD;
+    Efficiency : REAL;
+    CapacityKW : REAL;
+END_VAR
+VAR
+    state : INT;
+END_VAR
+
+BEGIN
+    Ready := FALSE;
+    Error := FALSE;
+    StatusID := 0;
+
+    IF Execute THEN
+        // TODO: Implement file system access using TIA Portal Openness or
+        // user-defined CSV parser once runtime environment is confirmed.
+        // Placeholder behaviour returns nominal values after single scan.
+        CASE state OF
+            0:
+                state := 1;
+                StatusID := 16#7001; // Loading initiated
+            1:
+                state := 2;
+                StatusID := 16#7002; // Simulated parse
+            2:
+                Ready := TRUE;
+                Efficiency := 3.2; // Placeholder COP from map
+                CapacityKW := 12.0; // Placeholder capacity
+                StatusID := 16#7003; // Completed
+                state := 3;
+            ELSE
+                Ready := TRUE;
+        END_CASE;
+    ELSE
+        state := 0;
+        Efficiency := 0.0;
+        CapacityKW := 0.0;
+    END_IF;
+END_FUNCTION_BLOCK

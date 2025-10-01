@@ -1,0 +1,239 @@
+TYPE E_Refrigerant : (
+    Refrig_R134a,
+    Refrig_R404A,
+    Refrig_CO2
+);
+END_TYPE;
+
+FUNCTION_BLOCK FB_RefrigerationCycle
+VAR_INPUT
+    CompressorFreqHz : REAL; // Commanded compressor speed in Hz
+    AmbientTempC : REAL; // Condenser ambient temperature
+    EvapSetpointC : REAL; // Desired evaporator outlet temperature
+    Refrigerant : E_Refrigerant := Refrig_R134a; // Active refrigerant selection
+    UseMapData : BOOL := FALSE; // TRUE to attempt loading Bitzer polynomial map
+END_VAR
+VAR_OUTPUT
+    LowSidePressureBar : REAL;
+    HighSidePressureBar : REAL;
+    COP : REAL; // Coefficient of performance
+    CoolingCapacityKW : REAL; // Refrigeration effect in kW
+    MassFlowKgPerS : REAL;
+    h1 : REAL; // Enthalpy at compressor inlet (kJ/kg)
+    h2 : REAL; // Enthalpy at compressor outlet (kJ/kg)
+    h3 : REAL; // Enthalpy after condenser (kJ/kg)
+    h4 : REAL; // Enthalpy after expansion valve (kJ/kg)
+    LogPPoints : ARRAY [1..4] OF REAL; // log10(p) values for h-log(p) plot
+    Status : WORD; // Status bits for diagnostics
+END_VAR
+VAR
+    freqHz : REAL;
+    freqNorm : REAL;
+    evapTempK : REAL;
+    condTempK : REAL;
+    suctionPressureBar : REAL;
+    dischargePressureBar : REAL;
+    deltaHComp : REAL;
+    refrigerantFactor : REAL;
+    cpApprox : REAL;
+    rhoApprox : REAL;
+    tempLiftK : REAL;
+    stableDenom : REAL;
+    statusWord : WORD;
+    mapReady : BOOL;
+    mapEfficiency : REAL;
+    mapCapacity : REAL;
+END_VAR
+
+CONST
+    MIN_FREQ_HZ : REAL := 20.0;
+    MAX_FREQ_HZ : REAL := 80.0;
+    MIN_EVAP_TEMP_C : REAL := -40.0;
+    MAX_EVAP_TEMP_C : REAL := 15.0;
+    MIN_AMBIENT_TEMP_C : REAL := 15.0;
+    MAX_AMBIENT_TEMP_C : REAL := 50.0;
+    MIN_PRESSURE_BAR : REAL := 0.5;
+    MAX_PRESSURE_BAR : REAL := 35.0;
+    MIN_COP : REAL := 0.1;
+    MAX_COP : REAL := 10.0;
+    BASE_MASSFLOW_KGPS : REAL := 0.05; // nominal mass flow at 50 Hz
+    BASE_COND_TEMP_K : REAL := 308.15; // approx 35°C
+    BASE_EVAP_TEMP_K : REAL := 273.15; // 0°C
+END_CONST;
+
+BEGIN
+    statusWord := 0;
+
+    // Clamp inputs to stable operating range
+    IF CompressorFreqHz < MIN_FREQ_HZ THEN
+        freqHz := MIN_FREQ_HZ;
+        statusWord := statusWord OR 16#0001;
+    ELSIF CompressorFreqHz > MAX_FREQ_HZ THEN
+        freqHz := MAX_FREQ_HZ;
+        statusWord := statusWord OR 16#0002;
+    ELSE
+        freqHz := CompressorFreqHz;
+    END_IF;
+
+    IF EvapSetpointC < MIN_EVAP_TEMP_C THEN
+        evapTempK := MIN_EVAP_TEMP_C + 273.15;
+        statusWord := statusWord OR 16#0004;
+    ELSIF EvapSetpointC > MAX_EVAP_TEMP_C THEN
+        evapTempK := MAX_EVAP_TEMP_C + 273.15;
+        statusWord := statusWord OR 16#0008;
+    ELSE
+        evapTempK := EvapSetpointC + 273.15;
+    END_IF;
+
+    IF AmbientTempC < MIN_AMBIENT_TEMP_C THEN
+        condTempK := MIN_AMBIENT_TEMP_C + 273.15;
+        statusWord := statusWord OR 16#0010;
+    ELSIF AmbientTempC > MAX_AMBIENT_TEMP_C THEN
+        condTempK := MAX_AMBIENT_TEMP_C + 273.15;
+        statusWord := statusWord OR 16#0020;
+    ELSE
+        condTempK := AmbientTempC + 273.15;
+    END_IF;
+
+    tempLiftK := condTempK - evapTempK;
+    IF tempLiftK < 5.0 THEN
+        tempLiftK := 5.0;
+        statusWord := statusWord OR 16#0040;
+    END_IF;
+
+    // Normalize frequency (0..1 within bounds)
+    freqNorm := (freqHz - MIN_FREQ_HZ) / (MAX_FREQ_HZ - MIN_FREQ_HZ);
+    IF freqNorm < 0.0 THEN
+        freqNorm := 0.0;
+    ELSIF freqNorm > 1.0 THEN
+        freqNorm := 1.0;
+    END_IF;
+
+    // Refrigerant-specific placeholder factors
+    CASE Refrigerant OF
+        Refrig_R134a:
+            refrigerantFactor := 1.0;
+            cpApprox := 1.42; // kJ/(kg*K)
+            rhoApprox := 1.15; // kg/m3 effective suction density
+        Refrig_R404A:
+            refrigerantFactor := 0.93;
+            cpApprox := 1.30;
+            rhoApprox := 1.20;
+        Refrig_CO2:
+            refrigerantFactor := 1.12;
+            cpApprox := 1.10;
+            rhoApprox := 1.35;
+        ELSE
+            refrigerantFactor := 1.0;
+            cpApprox := 1.42;
+            rhoApprox := 1.15;
+            statusWord := statusWord OR 16#0080;
+    END_CASE;
+
+    // Attempt to use map data when requested
+    mapReady := FALSE;
+    mapEfficiency := 0.0;
+    mapCapacity := 0.0;
+    IF UseMapData THEN
+        // TODO: Connect FB_BitzerMapLoader here.
+        // mapReady := MapInterface.Ready;
+        // mapEfficiency := MapInterface.Efficiency;
+        // mapCapacity := MapInterface.CapacityKW;
+        statusWord := statusWord OR 16#0100;
+    END_IF;
+
+    // Placeholder polynomials for suction and discharge pressures
+    suctionPressureBar := 2.0 + 4.0 * (1.0 - tempLiftK / 60.0);
+    suctionPressureBar := suctionPressureBar * (0.7 + 0.6 * freqNorm) * refrigerantFactor;
+
+    dischargePressureBar := 8.0 + 6.0 * (condTempK - BASE_COND_TEMP_K) / 30.0;
+    dischargePressureBar := dischargePressureBar * (0.8 + 0.5 * freqNorm) * refrigerantFactor;
+
+    // Guard pressure limits
+    IF suctionPressureBar < MIN_PRESSURE_BAR THEN
+        suctionPressureBar := MIN_PRESSURE_BAR;
+        statusWord := statusWord OR 16#0200;
+    ELSIF suctionPressureBar > MAX_PRESSURE_BAR THEN
+        suctionPressureBar := MAX_PRESSURE_BAR;
+        statusWord := statusWord OR 16#0400;
+    END_IF;
+
+    IF dischargePressureBar < MIN_PRESSURE_BAR THEN
+        dischargePressureBar := MIN_PRESSURE_BAR;
+        statusWord := statusWord OR 16#0800;
+    ELSIF dischargePressureBar > MAX_PRESSURE_BAR THEN
+        dischargePressureBar := MAX_PRESSURE_BAR;
+        statusWord := statusWord OR 16#1000;
+    END_IF;
+
+    // Estimate enthalpies (placeholder linear relations)
+    h1 := cpApprox * (evapTempK - 273.15) + 200.0; // base at evaporator outlet
+    h2 := h1 + 20.0 + 40.0 * freqNorm; // compressor work placeholder
+    h3 := h2 - (15.0 + 5.0 * freqNorm); // condenser removes heat
+    h4 := h3 - 10.0; // isenthalpic expansion approx (placeholder offset)
+
+    // Avoid negative enthalpies
+    IF h1 < 0.0 THEN h1 := 0.0; END_IF;
+    IF h2 < 0.0 THEN h2 := 0.0; END_IF;
+    IF h3 < 0.0 THEN h3 := 0.0; END_IF;
+    IF h4 < 0.0 THEN h4 := 0.0; END_IF;
+
+    // Mass flow derived from nominal base and frequency scaling
+    MassFlowKgPerS := BASE_MASSFLOW_KGPS * (freqHz / 50.0) * (rhoApprox / 1.15);
+    IF MassFlowKgPerS < 0.0 THEN
+        MassFlowKgPerS := 0.0;
+    END_IF;
+
+    // Cooling capacity based on enthalpy difference h1-h4 (evaporator)
+    deltaHComp := h1 - h4;
+    CoolingCapacityKW := MassFlowKgPerS * deltaHComp / 1.0; // kJ/s == kW
+
+    // Simple COP estimate: refrigeration effect / compressor work
+    stableDenom := h2 - h1;
+    IF ABS(stableDenom) < 0.001 THEN
+        stableDenom := 0.001;
+        statusWord := statusWord OR 16#2000;
+    END_IF;
+
+    COP := deltaHComp / stableDenom;
+    IF COP < MIN_COP THEN
+        COP := MIN_COP;
+        statusWord := statusWord OR 16#4000;
+    ELSIF COP > MAX_COP THEN
+        COP := MAX_COP;
+        statusWord := statusWord OR 16#8000;
+    END_IF;
+
+    // Override with map data if available
+    IF mapReady THEN
+        IF mapCapacity > 0.0 THEN
+            CoolingCapacityKW := mapCapacity;
+        END_IF;
+        IF mapEfficiency > 0.0 THEN
+            COP := mapEfficiency;
+        END_IF;
+    END_IF;
+
+    // Prepare outputs
+    LowSidePressureBar := suctionPressureBar;
+    HighSidePressureBar := dischargePressureBar;
+
+    // Log(p) values for h-log(p) diagram. Clip to avoid log of zero.
+    IF suctionPressureBar < 0.01 THEN
+        LogPPoints[1] := -2.0;
+        LogPPoints[4] := -2.0;
+    ELSE
+        LogPPoints[1] := LN(suctionPressureBar) / LN(10.0);
+        LogPPoints[4] := LogPPoints[1];
+    END_IF;
+
+    IF dischargePressureBar < 0.01 THEN
+        LogPPoints[2] := -2.0;
+        LogPPoints[3] := -2.0;
+    ELSE
+        LogPPoints[2] := LN(dischargePressureBar) / LN(10.0);
+        LogPPoints[3] := LogPPoints[2];
+    END_IF;
+
+    Status := statusWord;
+END_FUNCTION_BLOCK
