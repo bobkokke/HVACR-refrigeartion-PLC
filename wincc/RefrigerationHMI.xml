@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WinCCProject>
+  <Screens>
+    <Screen Name="RefrigerationCycle">
+      <Description>Simple monitoring screen for vapour-compression cycle</Description>
+      <Layout Width="1280" Height="720" BackgroundColor="#1E1E1E" />
+      <Elements>
+        <Gauge Name="Gauge_CompressorFreq" Type="Circular">
+          <Position X="40" Y="40" Width="260" Height="260" />
+          <Tag>PLC.CompressorFreqHz</Tag>
+          <Scale Min="20" Max="80" Units="Hz" />
+          <Title>Compressor Frequency</Title>
+        </Gauge>
+        <Trend Name="Trend_LogP" Type="XY">
+          <Position X="340" Y="40" Width="860" Height="360" />
+          <XAxis Title="log10(p) [bar]" Min="-2" Max="2" />
+          <YAxis Title="Specific Enthalpy h [kJ/kg]" Min="0" Max="450" />
+          <Series Name="CyclePoints" Mode="Point">
+            <Point TagX="PLC.LogPPoints[1]" TagY="PLC.h1" Color="#00BFFF" Label="1" />
+            <Point TagX="PLC.LogPPoints[2]" TagY="PLC.h2" Color="#1E90FF" Label="2" />
+            <Point TagX="PLC.LogPPoints[3]" TagY="PLC.h3" Color="#6495ED" Label="3" />
+            <Point TagX="PLC.LogPPoints[4]" TagY="PLC.h4" Color="#87CEFA" Label="4" />
+            <Polyline Color="#FFFFFF">
+              <Vertex TagX="PLC.LogPPoints[1]" TagY="PLC.h1" />
+              <Vertex TagX="PLC.LogPPoints[2]" TagY="PLC.h2" />
+              <Vertex TagX="PLC.LogPPoints[3]" TagY="PLC.h3" />
+              <Vertex TagX="PLC.LogPPoints[4]" TagY="PLC.h4" />
+              <Vertex TagX="PLC.LogPPoints[1]" TagY="PLC.h1" />
+            </Polyline>
+          </Series>
+        </Trend>
+        <ValueDisplay Name="Value_LowPressure">
+          <Position X="40" Y="340" Width="260" Height="60" />
+          <Tag>PLC.LowSidePressureBar</Tag>
+          <Format DecimalPlaces="2" Units="bar" Label="Suction Pressure" />
+        </ValueDisplay>
+        <ValueDisplay Name="Value_HighPressure">
+          <Position X="40" Y="410" Width="260" Height="60" />
+          <Tag>PLC.HighSidePressureBar</Tag>
+          <Format DecimalPlaces="2" Units="bar" Label="Discharge Pressure" />
+        </ValueDisplay>
+        <ValueDisplay Name="Value_COP">
+          <Position X="40" Y="480" Width="260" Height="60" />
+          <Tag>PLC.COP</Tag>
+          <Format DecimalPlaces="2" Units="-" Label="COP" />
+        </ValueDisplay>
+        <ValueDisplay Name="Value_CoolingCapacity">
+          <Position X="40" Y="550" Width="260" Height="60" />
+          <Tag>PLC.CoolingCapacityKW</Tag>
+          <Format DecimalPlaces="2" Units="kW" Label="Cooling Capacity" />
+        </ValueDisplay>
+        <ValueDisplay Name="Value_MassFlow">
+          <Position X="40" Y="620" Width="260" Height="60" />
+          <Tag>PLC.MassFlowKgPerS</Tag>
+          <Format DecimalPlaces="3" Units="kg/s" Label="Mass Flow" />
+        </ValueDisplay>
+        <AlarmView Name="Alarm_Status">
+          <Position X="340" Y="420" Width="860" Height="220" />
+          <Tag>PLC.Status</Tag>
+          <Mapping>
+            <Bit Number="0" Message="Compressor frequency clamped low" />
+            <Bit Number="1" Message="Compressor frequency clamped high" />
+            <Bit Number="2" Message="Evaporator setpoint clamped low" />
+            <Bit Number="3" Message="Evaporator setpoint clamped high" />
+            <Bit Number="4" Message="Ambient temperature clamped low" />
+            <Bit Number="5" Message="Ambient temperature clamped high" />
+            <Bit Number="6" Message="Temperature lift forced minimum" />
+            <Bit Number="7" Message="Unknown refrigerant" />
+            <Bit Number="8" Message="Bitzer map requested but unavailable" />
+            <Bit Number="9" Message="Suction pressure clipped min" />
+            <Bit Number="10" Message="Suction pressure clipped max" />
+            <Bit Number="11" Message="Discharge pressure clipped min" />
+            <Bit Number="12" Message="Discharge pressure clipped max" />
+            <Bit Number="13" Message="COP denominator protected" />
+            <Bit Number="14" Message="COP clipped min" />
+            <Bit Number="15" Message="COP clipped max" />
+          </Mapping>
+        </AlarmView>
+      </Elements>
+    </Screen>
+  </Screens>
+  <Tags>
+    <Tag Name="PLC.CompressorFreqHz" Type="Real" Address="DB_RefrigCycle.CompressorFreqHz" />
+    <Tag Name="PLC.AmbientTempC" Type="Real" Address="DB_RefrigCycle.AmbientTempC" />
+    <Tag Name="PLC.EvapSetpointC" Type="Real" Address="DB_RefrigCycle.EvapSetpointC" />
+    <Tag Name="PLC.LowSidePressureBar" Type="Real" Address="DB_RefrigCycle.LowSidePressureBar" />
+    <Tag Name="PLC.HighSidePressureBar" Type="Real" Address="DB_RefrigCycle.HighSidePressureBar" />
+    <Tag Name="PLC.COP" Type="Real" Address="DB_RefrigCycle.COP" />
+    <Tag Name="PLC.CoolingCapacityKW" Type="Real" Address="DB_RefrigCycle.CoolingCapacityKW" />
+    <Tag Name="PLC.MassFlowKgPerS" Type="Real" Address="DB_RefrigCycle.MassFlowKgPerS" />
+    <Tag Name="PLC.h1" Type="Real" Address="DB_RefrigCycle.h1" />
+    <Tag Name="PLC.h2" Type="Real" Address="DB_RefrigCycle.h2" />
+    <Tag Name="PLC.h3" Type="Real" Address="DB_RefrigCycle.h3" />
+    <Tag Name="PLC.h4" Type="Real" Address="DB_RefrigCycle.h4" />
+    <Tag Name="PLC.LogPPoints[1]" Type="Real" Address="DB_RefrigCycle.LogPPoints[1]" />
+    <Tag Name="PLC.LogPPoints[2]" Type="Real" Address="DB_RefrigCycle.LogPPoints[2]" />
+    <Tag Name="PLC.LogPPoints[3]" Type="Real" Address="DB_RefrigCycle.LogPPoints[3]" />
+    <Tag Name="PLC.LogPPoints[4]" Type="Real" Address="DB_RefrigCycle.LogPPoints[4]" />
+    <Tag Name="PLC.Status" Type="Word" Address="DB_RefrigCycle.Status" />
+  </Tags>
+</WinCCProject>
