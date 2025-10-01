@@ -7,9 +7,9 @@
 *)
 
 TYPE E_Refrigerant : (
-    R134a := 1,
-    R404A := 2,
-    CO2 := 3
+    Refrig_R134a,
+    Refrig_R404A,
+    Refrig_CO2
 );
 END_TYPE;
 
@@ -18,7 +18,7 @@ VAR_INPUT
     CompressorFreqHz : REAL; // Commanded compressor speed in Hz
     AmbientTempC : REAL; // Condenser ambient temperature
     EvapSetpointC : REAL; // Desired evaporator outlet temperature
-    Refrigerant : E_Refrigerant := R134a; // Active refrigerant selection
+    Refrigerant : E_Refrigerant := Refrig_R134a; // Active refrigerant selection
     UseMapData : BOOL := FALSE; // TRUE to attempt loading Bitzer polynomial map
 END_VAR
 VAR_OUTPUT
@@ -119,15 +119,15 @@ BEGIN
 
     // Refrigerant-specific placeholder factors
     CASE Refrigerant OF
-        R134a:
+        Refrig_R134a:
             refrigerantFactor := 1.0;
             cpApprox := 1.42; // kJ/(kg*K)
             rhoApprox := 1.15; // kg/m3 effective suction density
-        R404A:
+        Refrig_R404A:
             refrigerantFactor := 0.93;
             cpApprox := 1.30;
             rhoApprox := 1.20;
-        CO2:
+        Refrig_CO2:
             refrigerantFactor := 1.12;
             cpApprox := 1.10;
             rhoApprox := 1.35;
